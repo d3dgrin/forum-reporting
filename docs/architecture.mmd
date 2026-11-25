@@ -1,0 +1,24 @@
+%% Implemented prototype architecture (Part 2). The full target design (Part 1) is in ../diagrams/.
+flowchart LR
+    User[Forum user<br/>X-Demo-UserId header] -->|POST /api/reports<br/>postId, reason| Reporting
+
+    subgraph ReportingSvc[Reporting.Api :5103]
+        Reporting[Report endpoint<br/>validate, self-report check]
+        Tx[[One DB transaction<br/>1 insert report ON CONFLICT DO NOTHING<br/>2 counter +1 row lock<br/>3 at 5: block_requested_at once<br/>4 outbox insert]]
+        Worker[Outbox publisher<br/>FOR UPDATE SKIP LOCKED<br/>confirms + mandatory]
+        Reporting --> Tx
+    end
+
+    Reporting -->|GET /api/posts/id<br/>who is the author?| Posts[Posts.Api :5101<br/>in-memory stub]
+    Tx --> RDB[(reporting_db<br/>reports UNIQUE reporter,reported<br/>reported_user_counters<br/>outbox_messages)]
+    RDB --> Worker
+    Worker -->|UserBlockRequested v1<br/>MessageId = EventId| MQ[(RabbitMQ<br/>forum.events topic<br/>quorum queue + DLQ)]
+
+    subgraph AccountSvc[Account.Api :5102]
+        Consumer[Consumer<br/>ack after commit]
+        Status[GET /api/accounts/id/status]
+    end
+
+    MQ --> Consumer
+    Consumer -->|dedup EventId + set Blocked<br/>one transaction| ADB[(account_db<br/>accounts<br/>processed_messages)]
+    Status --> ADB
