@@ -1,0 +1,37 @@
+### Forum Reporting demo requests (VS / Rider / VS Code REST Client)
+### X-Demo-UserId is DEMO authentication only.
+
+@reporting = http://localhost:5103
+@account = http://localhost:5102
+@posts = http://localhost:5101
+
+### Posts stub: who wrote post-1?
+GET {{posts}}/api/posts/post-1
+
+### Report a post (repeat with reporter-1..5)
+POST {{reporting}}/api/reports
+Content-Type: application/json
+X-Demo-UserId: reporter-1
+
+{ "postId": "post-1", "reason": "Harassment" }
+
+### Duplicate: same reporter, different post by the same author -> 409
+POST {{reporting}}/api/reports
+Content-Type: application/json
+X-Demo-UserId: reporter-1
+
+{ "postId": "post-2", "reason": "Spam" }
+
+### Self-report -> 422 (post-11 belongs to reporter-1)
+POST {{reporting}}/api/reports
+Content-Type: application/json
+X-Demo-UserId: reporter-1
+
+{ "postId": "post-11", "reason": "Spam" }
+
+### Distinct-reporter count and block-request state (Reporting)
+GET {{reporting}}/api/reports/users/target-1/summary
+X-Demo-UserId: support-demo
+
+### Account status (Account)
+GET {{account}}/api/accounts/target-1/status
