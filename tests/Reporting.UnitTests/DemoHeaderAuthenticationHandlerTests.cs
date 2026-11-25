@@ -36,6 +36,7 @@ public class DemoHeaderAuthenticationHandlerTests
     [InlineData("   ")]
     [InlineData("reporter 1")]
     [InlineData("reporter/1")]
+    [InlineData("reporter-1\n")] // trailing newline must not pass the anchor
     public async Task Invalid_user_id_fails(string value)
     {
         var result = await AuthenticateAsync(value);

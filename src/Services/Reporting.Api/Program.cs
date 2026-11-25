@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Reporting.Api.Auth;
+using Reporting.Api.Persistence;
 using Reporting.Api.Posts;
 using Reporting.Api.Reports;
 
@@ -34,14 +36,32 @@ builder.Services.AddHttpClient<IPostsClient, PostsClient>((sp, http) =>
     http.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 });
 
+// --- Persistence (reporting_db, owned by this service only) ---
+var connectionString = builder.Configuration.GetConnectionString("Reporting")
+    ?? throw new InvalidOperationException("Connection string 'Reporting' is not configured.");
+builder.Services.AddDbContext<ReportingDbContext>(o => o
+    .UseNpgsql(connectionString)
+    .UseSnakeCaseNamingConvention());
+
 // --- Reports ---
-// TODO(iteration-3): DELETE this line and register the PostgreSQL IReportService instead (single registration).
-builder.Services.AddSingleton<IReportService, InMemoryReportService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddOptions<ReportingOptions>()
+    .BindConfiguration(ReportingOptions.SectionName)
+    .Validate(o => o.BlockThreshold >= 1, "Reporting:BlockThreshold must be >= 1.")
+    .ValidateOnStart();
+builder.Services.AddScoped<IReportService, PostgresReportService>();
 builder.Services.AddScoped<SubmitReportHandler>();
 
 var app = builder.Build();
 
 app.Logger.LogWarning("Using DEMO header authentication ({Header}). Not for production use.", DemoHeaderAuthenticationHandler.HeaderName);
+
+// Prototype convenience: apply migrations on startup (EF takes a database lock, so parallel instances are safe).
+// Production: run migrations as a separate deployment step.
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    await scope.ServiceProvider.GetRequiredService<ReportingDbContext>().Database.MigrateAsync();
+}
 
 app.UseStatusCodePages();
 app.UseAuthentication();
@@ -54,7 +74,12 @@ app.MapPost("/api/reports",
             handler.HandleAsync(http.User.GetRequiredUserId(), request, ct))
     .RequireAuthorization();
 
-app.Run();
+// Demo/support view of the distinct-reporter count and block-request state.
+// Production: require a moderator/support role, not just any authenticated user.
+app.MapGet("/api/reports/users/{userId}/summary", ReportSummaryEndpoint.HandleAsync)
+    .RequireAuthorization();
+
+await app.RunAsync();
 
 // Exposed for WebApplicationFactory in integration tests.
 public partial class Program;

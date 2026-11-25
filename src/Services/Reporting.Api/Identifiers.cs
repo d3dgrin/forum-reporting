@@ -14,9 +14,10 @@ public static partial class Identifiers
 
     public static bool IsValidPostId(string? value) => value is not null && PostIdRegex().IsMatch(value);
 
-    [GeneratedRegex(@"^[A-Za-z0-9._@-]{1,64}$", RegexOptions.CultureInvariant)]
+    // \z, not $: in .NET, $ also matches before a trailing "\n", so "abc\n" would pass.
+    [GeneratedRegex(@"^[A-Za-z0-9._@-]{1,64}\z", RegexOptions.CultureInvariant)]
     private static partial Regex UserIdRegex();
 
-    [GeneratedRegex(@"^[A-Za-z0-9-]{1,64}$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^[A-Za-z0-9-]{1,64}\z", RegexOptions.CultureInvariant)]
     private static partial Regex PostIdRegex();
 }

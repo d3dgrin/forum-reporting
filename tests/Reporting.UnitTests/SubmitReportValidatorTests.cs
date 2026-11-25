@@ -28,6 +28,7 @@ public class SubmitReportValidatorTests
     [InlineData("a/b")]
     [InlineData("post 1")]
     [InlineData("../admin")]
+    [InlineData("post-1\n")] // $ would accept a trailing newline; \z must not
     public void Invalid_postId_is_rejected(string? postId)
     {
         SubmitReportValidator.TryValidate(new SubmitReportRequest(postId, "Harassment"), out _, out var errors).ShouldBeFalse();
