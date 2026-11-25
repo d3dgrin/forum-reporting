@@ -125,7 +125,16 @@ The demo shows:
 - the 5th reporter → `blockRequested: true`;
 - `target-1` becoming **Blocked** about 1 s later.
 
-You can also click through the requests in [`demo.http`](demo.http).
+You can also click through the requests in [`demo.http`](demo.http), or use **Swagger UI** (Development only):
+
+| Service | Swagger UI |
+|---|---|
+| Reporting.Api | http://localhost:5103/swagger. Click **Authorize** and enter a demo user ID (e.g. `reporter-1`); requests are then sent with `X-Demo-UserId` |
+| Account.Api | http://localhost:5102/swagger |
+| Posts.Api | http://localhost:5101/swagger |
+
+**Visual Studio:** open `ForumReporting.slnx`, then right-click the solution → *Configure Startup Projects* → *Multiple startup
+projects*, and set all three `*.Api` projects to *Start*. Start Docker first. F5 opens Swagger UI for each service.
 
 **Broker outage demo:**
 1. `docker stop forum-reporting-rabbitmq-1`

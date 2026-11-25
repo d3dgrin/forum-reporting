@@ -9,6 +9,9 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0" />
     <!-- Messaging (raw client, Apache-2.0/MPL-2.0) -->
     <PackageVersion Include="RabbitMQ.Client" Version="7.3.0" />
+    <!-- API docs (Development only) -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="11.0.1" />
     <!-- Testing -->
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />

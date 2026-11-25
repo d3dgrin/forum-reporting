@@ -22,6 +22,7 @@ builder.Services
     .AddScheme<AuthenticationSchemeOptions, DemoHeaderAuthenticationHandler>(DemoHeaderAuthenticationHandler.SchemeName, null);
 builder.Services.AddAuthorization();
 builder.Services.AddProblemDetails();
+builder.Services.AddOpenApi(o => o.AddDocumentTransformer<DemoHeaderOpenApiTransformer>());
 
 // --- Posts service client ---
 builder.Services.AddOptions<PostsClientOptions>()
@@ -69,21 +70,38 @@ await using (var scope = app.Services.CreateAsyncScope())
     await scope.ServiceProvider.GetRequiredService<ReportingDbContext>().Database.MigrateAsync();
 }
 
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();                                                             // /openapi/v1.json
+    app.UseSwaggerUI(o => o.SwaggerEndpoint("/openapi/v1.json", "Reporting.Api")); // /swagger ("Authorize" → X-Demo-UserId)
+}
+
 app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).ExcludeFromDescription();
 
 app.MapPost("/api/reports",
         (SubmitReportRequest? request, HttpContext http, SubmitReportHandler handler, CancellationToken ct) =>
             handler.HandleAsync(http.User.GetRequiredUserId(), request, ct))
-    .RequireAuthorization();
+    .RequireAuthorization()
+    .WithSummary("Report a post's author (reporter = X-Demo-UserId)")
+    .Produces<SubmitReportResponse>(StatusCodes.Status201Created)
+    .ProducesValidationProblem()
+    .ProducesProblem(StatusCodes.Status401Unauthorized)
+    .ProducesProblem(StatusCodes.Status404NotFound)
+    .ProducesProblem(StatusCodes.Status409Conflict)
+    .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+    .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
 // Demo/support view of the distinct-reporter count and block-request state.
 // Production: require a moderator/support role, not just any authenticated user.
 app.MapGet("/api/reports/users/{userId}/summary", ReportSummaryEndpoint.HandleAsync)
-    .RequireAuthorization();
+    .RequireAuthorization()
+    .WithSummary("Distinct-reporter count and block-request state of a user")
+    .Produces<ReportSummaryResponse>()
+    .ProducesValidationProblem();
 
 await app.RunAsync();
 
