@@ -24,6 +24,7 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();                                                           // /openapi/v1.json
     app.UseSwaggerUI(o => o.SwaggerEndpoint("/openapi/v1.json", "Account.Api")); // /swagger
+    app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 }
 
 // Demo convenience: apply migrations (incl. seeded demo accounts) on startup.

@@ -74,6 +74,7 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();                                                             // /openapi/v1.json
     app.UseSwaggerUI(o => o.SwaggerEndpoint("/openapi/v1.json", "Reporting.Api")); // /swagger ("Authorize" → X-Demo-UserId)
+    app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 }
 
 app.UseStatusCodePages();
