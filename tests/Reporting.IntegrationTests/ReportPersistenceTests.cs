@@ -122,8 +122,6 @@ public class ReportPersistenceTests(ReportingApiFactory factory)
         await using var scope = factory.NewScope();
         var message = await factory.Db(scope).OutboxMessages.AsNoTracking()
             .SingleAsync(m => EF.Functions.JsonContains(m.Payload, JsonSerializer.Serialize(new { userId = target })), Ct);
-        message.PublishedAt.ShouldBeNull();
-        message.Attempts.ShouldBe(0);
         var evt = JsonSerializer.Deserialize<UserBlockRequested>(message.Payload, ContractJson.Options)!;
         evt.EventId.ShouldBe(message.Id);
         evt.UserId.ShouldBe(target);

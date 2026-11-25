@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Reporting.Api.Persistence;
 using Reporting.Api.Posts;
 using Testcontainers.PostgreSql;
+using Testcontainers.RabbitMq;
 
 [assembly: AssemblyFixture(typeof(Reporting.IntegrationTests.ReportingApiFactory))]
 
@@ -21,13 +22,17 @@ public sealed class ReportingApiFactory : WebApplicationFactory<Program>, IAsync
         .WithDatabase("reporting_db")
         .Build();
 
+    private readonly RabbitMqContainer _rabbit = new RabbitMqBuilder("rabbitmq:4.4-management").Build();
+
     public FakePosts Posts { get; } = new();
+
+    public RabbitMQ.Client.ConnectionFactory RabbitFactory => new() { Uri = new Uri(_rabbit.GetConnectionString()) };
 
     public string ConnectionString => _postgres.GetConnectionString();
 
     public async ValueTask InitializeAsync()
     {
-        await _postgres.StartAsync();
+        await Task.WhenAll(_postgres.StartAsync(), _rabbit.StartAsync());
         _ = Services; // build the host now → migrations run once, before any test
     }
 
@@ -35,6 +40,11 @@ public sealed class ReportingApiFactory : WebApplicationFactory<Program>, IAsync
         builder
             .UseEnvironment("Testing")
             .UseSetting("ConnectionStrings:Reporting", _postgres.GetConnectionString())
+            .UseSetting("RabbitMq:HostName", _rabbit.Hostname)
+            .UseSetting("RabbitMq:Port", _rabbit.GetMappedPublicPort(5672).ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .UseSetting("RabbitMq:UserName", RabbitMqBuilder.DefaultUsername)
+            .UseSetting("RabbitMq:Password", RabbitMqBuilder.DefaultPassword)
+            .UseSetting("Outbox:PollIntervalMilliseconds", "200")
             .ConfigureTestServices(services => services.AddSingleton<IPostsClient>(Posts));
 
     /// <summary>A fresh DbContext on its own connection, for assertions and for concurrency tests.</summary>
@@ -46,6 +56,7 @@ public sealed class ReportingApiFactory : WebApplicationFactory<Program>, IAsync
     {
         await base.DisposeAsync();
         await _postgres.DisposeAsync();
+        await _rabbit.DisposeAsync();
     }
 }
 

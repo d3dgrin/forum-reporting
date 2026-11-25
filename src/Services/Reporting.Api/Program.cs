@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Reporting.Api.Auth;
+using Reporting.Api.Outbox;
 using Reporting.Api.Persistence;
 using Reporting.Api.Posts;
 using Reporting.Api.Reports;
@@ -51,6 +52,11 @@ builder.Services.AddOptions<ReportingOptions>()
     .ValidateOnStart();
 builder.Services.AddScoped<IReportService, PostgresReportService>();
 builder.Services.AddScoped<SubmitReportHandler>();
+
+// --- Outbox → RabbitMQ ---
+builder.Services.AddOptions<RabbitMqOptions>().BindConfiguration(RabbitMqOptions.SectionName);
+builder.Services.AddOptions<OutboxOptions>().BindConfiguration(OutboxOptions.SectionName);
+builder.Services.AddHostedService<OutboxPublisherWorker>();
 
 var app = builder.Build();
 
