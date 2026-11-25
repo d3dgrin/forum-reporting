@@ -1,0 +1,7 @@
+namespace Reporting.UnitTests;
+
+public class SmokeTests
+{
+    [Fact]
+    public void Project_builds_and_runs_tests() => true.ShouldBeTrue();
+}
